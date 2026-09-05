@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Periodic Table Drill</title>
+<style>
+  :root {
+    --bg: #1c332c;
+    --panel: #223f37;
+    --cell: #2a4c42;
+    --cell-border: #cdd6c4;
+    --chalk: #f2efe2;
+    --chalk-dim: #b9c4b6;
+    --yellow: #e3b653;
+    --green: #93c17f;
+    --red: #c15f57;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(255,255,255,0.025), transparent 45%);
+    color: var(--chalk);
+    font-family: var(--sans);
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px 60px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 760px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 22px;
+  }
+
+  header h1 {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 1.5rem;
+    letter-spacing: 0.02em;
+    margin: 0 0 6px;
+    color: var(--chalk);
+  }
+
+  header p {
+    margin: 0;
+    color: var(--chalk-dim);
+    font-size: 0.92rem;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: center;
+    gap: 22px;
+    margin: 18px 0 4px;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--chalk-dim);
+  }
+
+  .stat-row strong {
+    color: var(--chalk);
+    font-size: 1rem;
+  }
+
+  .mode-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 18px 0 26px;
+    flex-wrap: wrap;
+  }
+
+  .mode-btn {
+    background: transparent;
+    border: 1px solid var(--cell-border);
+    color: var(--chalk-dim);
+    font-family: var(--sans);
+    font-size: 0.82rem;
+    padding: 7px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .mode-btn:hover { color: var(--chalk); border-color: var(--chalk); }
+
+  .mode-btn.active {
+    background: var(--yellow);
+    border-color: var(--yellow);
+    color: #24301b;
+    font-weight: 600;
+  }
+
+  .prompt-panel {
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    padding: 22px 20px;
+    text-align: center;
+    margin-bottom: 26px;
+    min-height: 108px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .prompt-label {
+    font-size: 0.78rem;
+    text-transform: none;
+    color: var(--chalk-dim);
+    letter-spacing: 0.01em;
+  }
+
+  .prompt-value {
+    font-family: var(--mono);
+    font-size: 2.6rem;
+    font-weight: 600;
+    color: var(--chalk);
+    line-height: 1.1;
+    word-break: break-word;
+  }
+
+  .feedback {
+    min-height: 22px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .feedback.correct { color: var(--green); }
+  .feedback.wrong { color: var(--red); }
+
+  .table-scroll {
+    padding-bottom: 6px;
+  }
+
+  .group-labels, .grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+  }
+
+  .group-labels {
+    margin-bottom: 6px;
+  }
+
+  .group-labels span {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--chalk-dim);
+  }
+
+  .grid {
+    grid-auto-rows: minmax(58px, 1fr);
+  }
+
+  .cell {
+    position: relative;
+    border: 1.5px dashed var(--cell-border);
+    border-radius: 4px;
+    background: var(--cell);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.08s ease, border-color 0.15s ease;
+    aspect-ratio: 1 / 1;
+  }
+
+  .cell:hover:not(.empty):not(.disabled) {
+    background: #345a4e;
+    transform: translateY(-1px);
+  }
+
+  .cell.empty {
+    border: none;
+    background: transparent;
+    cursor: default;
+    pointer-events: none;
+  }
+
+  .cell .num {
+    position: absolute;
+    top: 3px;
+    left: 5px;
+    font-family: var(--mono);
+    font-size: clamp(0.45rem, 1.6vw, 0.55rem);
+    color: var(--chalk-dim);
+  }
+
+  .cell .sym {
+    font-family: var(--mono);
+    font-size: clamp(0.85rem, 4.2vw, 1.15rem);
+    font-weight: 600;
+    color: var(--chalk);
+  }
+
+  .cell .nm {
+    position: absolute;
+    bottom: 4px;
+    font-size: clamp(0.4rem, 1.5vw, 0.5rem);
+    color: var(--chalk-dim);
+    white-space: nowrap;
+  }
+
+  .cell.blank .sym, .cell.blank .nm, .cell.blank .num { visibility: hidden; }
+
+  .cell.gap-before {
+    margin-left: 8px;
+  }
+  .cell.gap-before::before {
+    content: "";
+    position: absolute;
+    left: -6px;
+    top: -2px;
+    bottom: -2px;
+    width: 0;
+    border-left: 2px double rgba(255,255,255,0.25);
+  }
+
+  .cell.correct {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .cell.correct .sym, .cell.correct .num, .cell.correct .nm { color: #1c332c; }
+
+  .cell.wrong-pick {
+    background: var(--red);
+    border-color: var(--red);
+  }
+  .cell.wrong-pick .sym { color: #2a0f0d; }
+
+  .cell.reveal {
+    background: var(--yellow);
+    border-color: var(--yellow);
+  }
+  .cell.reveal .sym, .cell.reveal .num, .cell.reveal .nm { color: #2a2210; }
+
+  .cell.disabled { cursor: default; }
+
+  footer {
+    text-align: center;
+    margin-top: 22px;
+  }
+
+  .reset-btn {
+    background: transparent;
+    border: 1px solid var(--cell-border);
+    color: var(--chalk-dim);
+    font-family: var(--sans);
+    font-size: 0.8rem;
+    padding: 6px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .reset-btn:hover { color: var(--chalk); border-color: var(--chalk); }
+
+  @media (max-width: 480px) {
+    body { padding: 20px 8px 40px; }
+    .prompt-value { font-size: clamp(1.4rem, 8vw, 2rem); }
+    .stat-row { gap: 12px; font-size: 0.75rem; }
+    .group-labels, .grid { gap: 4px; }
+    .cell .nm { display: none; }
+    .mode-row { gap: 6px; }
+    .mode-btn { font-size: 0.72rem; padding: 6px 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Periodic Table Drill</h1>
+    <p>Find the square before it finds you.</p>
+  </header>
+
+  <div class="stat-row">
+    <div>Score <strong id="score">0</strong></div>
+    <div>Streak <strong id="streak">0</strong></div>
+    <div>Round <strong id="roundNum">1</strong> &middot; <span id="qInRound">1</span>/26</div>
+  </div>
+
+  <div class="mode-row">
+    <button class="mode-btn active" data-mode="symbol">Symbol → square</button>
+    <button class="mode-btn" data-mode="name">Name → square</button>
+    <button class="mode-btn" data-mode="mixed">Mixed</button>
+  </div>
+
+  <div class="prompt-panel">
+    <div class="prompt-label" id="promptLabel">Find this element:</div>
+    <div class="prompt-value" id="promptValue">—</div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div class="table-scroll">
+    <div class="group-labels">
+      <span>1A</span><span>2A</span><span>3A</span><span>4A</span>
+      <span>5A</span><span>6A</span><span>7A</span><span>8A</span>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <footer>
+    <button class="reset-btn" id="resetBtn">Reset progress</button>
+  </footer>
+</div>
+
+<script>
+  // Table layout matching the reference sheet: periods 1-4, groups 1A-8A,
+  // with the transition metals (21-30) skipped in period 4.
+  const layout = [
+    [{n:1,s:"H",name:"Hydrogen"}, null, null, null, null, null, null, {n:2,s:"He",name:"Helium"}],
+    [{n:3,s:"Li",name:"Lithium"}, {n:4,s:"Be",name:"Beryllium"}, {n:5,s:"B",name:"Boron"}, {n:6,s:"C",name:"Carbon"}, {n:7,s:"N",name:"Nitrogen"}, {n:8,s:"O",name:"Oxygen"}, {n:9,s:"F",name:"Fluorine"}, {n:10,s:"Ne",name:"Neon"}],
+    [{n:11,s:"Na",name:"Sodium"}, {n:12,s:"Mg",name:"Magnesium"}, {n:13,s:"Al",name:"Aluminum"}, {n:14,s:"Si",name:"Silicon"}, {n:15,s:"P",name:"Phosphorus"}, {n:16,s:"S",name:"Sulfur"}, {n:17,s:"Cl",name:"Chlorine"}, {n:18,s:"Ar",name:"Argon"}],
+    [{n:19,s:"K",name:"Potassium"}, {n:20,s:"Ca",name:"Calcium"}, {n:31,s:"Ga",name:"Gallium"}, {n:32,s:"Ge",name:"Germanium"}, {n:33,s:"As",name:"Arsenic"}, {n:34,s:"Se",name:"Selenium"}, {n:35,s:"Br",name:"Bromine"}, {n:36,s:"Kr",name:"Krypton"}]
+  ];
+
+  const grid = document.getElementById("grid");
+  const promptValue = document.getElementById("promptValue");
+  const promptLabel = document.getElementById("promptLabel");
+  const feedback = document.getElementById("feedback");
+  const scoreEl = document.getElementById("score");
+  const streakEl = document.getElementById("streak");
+  const roundNumEl = document.getElementById("roundNum");
+  const qInRoundEl = document.getElementById("qInRound");
+  const resetBtn = document.getElementById("resetBtn");
+  const modeBtns = document.querySelectorAll(".mode-btn");
+
+  let score = 0, streak = 0, round = 1, qIndex = 0;
+  let mode = "symbol";
+  let pool = [];
+  let current = null;
+  let locked = false;
+  let revealedKeys = [];
+  let solved = new Set();
+
+  // Build the grid DOM once
+  const cellEls = {};
+  layout.forEach((row, r) => {
+    row.forEach((el, c) => {
+      const div = document.createElement("div");
+      div.classList.add("cell");
+      if (c === 2) div.classList.add("gap-before");
+      if (!el) {
+        div.classList.add("empty", "blank");
+        div.innerHTML = `<span class="num"></span><span class="sym"></span><span class="nm"></span>`;
+      } else {
+        div.classList.add("blank");
+        div.innerHTML = `<span class="num">${el.n}</span><span class="sym">${el.s}</span><span class="nm">${el.name}</span>`;
+        div.dataset.row = r;
+        div.dataset.col = c;
+        div.addEventListener("click", () => handleClick(r, c, div));
+        cellEls[`${r}-${c}`] = div;
+      }
+      grid.appendChild(div);
+    });
+  });
+
+  function allElements() {
+    const list = [];
+    layout.forEach((row, r) => row.forEach((el, c) => {
+      if (el && !solved.has(`${r}-${c}`)) list.push({...el, r, c});
+    }));
+    return list;
+  }
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function startRound() {
+    pool = shuffle(allElements());
+    qIndex = 0;
+    qInRoundEl.textContent = "1";
+    roundNumEl.textContent = round;
+    nextQuestion();
+  }
+
+  function nextQuestion() {
+    clearCellStates();
+    locked = false;
+    feedback.textContent = "";
+    feedback.className = "feedback";
+
+    if (solved.size >= 26) {
+      promptLabel.textContent = "All 26 elements learned.";
+      promptValue.textContent = "🎉";
+      qInRoundEl.textContent = "26";
+      current = null;
+      return;
+    }
+
+    if (qIndex >= pool.length) {
+      round += 1;
+      pool = shuffle(allElements());
+      qIndex = 0;
+    }
+    current = pool[qIndex];
+    qIndex += 1;
+    roundNumEl.textContent = round;
+    qInRoundEl.textContent = solved.size + qIndex;
+
+    let useSymbol = mode === "symbol" || (mode === "mixed" && Math.random() < 0.5);
+    if (useSymbol) {
+      promptLabel.textContent = "Find this element:";
+      promptValue.textContent = current.s;
+    } else {
+      promptLabel.textContent = "Find this element:";
+      promptValue.textContent = current.name;
+    }
+  }
+
+  function clearCellStates() {
+    Object.values(cellEls).forEach(div => {
+      div.classList.remove("wrong-pick", "reveal", "disabled");
+    });
+    revealedKeys.forEach(key => {
+      const div = cellEls[key];
+      if (div) div.classList.add("blank");
+    });
+    revealedKeys = [];
+  }
+
+  function handleClick(r, c, div) {
+    if (locked || !current) return;
+    const isCorrect = (r === current.r && c === current.c);
+
+    if (isCorrect) {
+      locked = true;
+      div.classList.remove("blank");
+      div.classList.add("correct");
+      solved.add(`${r}-${c}`);
+      score += 1;
+      streak += 1;
+      scoreEl.textContent = score;
+      streakEl.textContent = streak;
+      feedback.textContent = "Correct.";
+      feedback.className = "feedback correct";
+      setTimeout(nextQuestion, 550);
+    } else {
+      locked = true;
+      streak = 0;
+      streakEl.textContent = streak;
+      div.classList.remove("blank");
+      div.classList.add("wrong-pick");
+      revealedKeys.push(`${r}-${c}`);
+      const correctDiv = cellEls[`${current.r}-${current.c}`];
+      if (!correctDiv.classList.contains("correct")) {
+        correctDiv.classList.remove("blank");
+        correctDiv.classList.add("reveal");
+        revealedKeys.push(`${current.r}-${current.c}`);
+      }
+      feedback.textContent = `Not quite — that's ${current.s}, ${current.name}.`;
+      feedback.className = "feedback wrong";
+      setTimeout(nextQuestion, 1600);
+    }
+  }
+
+  modeBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      modeBtns.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      mode = btn.dataset.mode;
+      nextQuestion();
+    });
+  });
+
+  resetBtn.addEventListener("click", () => {
+    score = 0; streak = 0; round = 1;
+    solved.clear();
+    scoreEl.textContent = 0; streakEl.textContent = 0;
+    Object.values(cellEls).forEach(div => {
+      div.classList.remove("correct", "wrong-pick", "reveal", "disabled");
+      div.classList.add("blank");
+    });
+    startRound();
+  });
+
+  startRound();
+</script>
+</body>
+</html>
